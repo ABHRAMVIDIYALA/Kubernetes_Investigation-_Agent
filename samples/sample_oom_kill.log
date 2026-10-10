@@ -1,0 +1,12 @@
+2026-10-10T11:42:01.120Z stdout F [INFO] pod/payment-service-589f8dc94-p9w7c namespace/production Starting payment-service v2.4.1
+2026-10-10T11:42:02.450Z stdout F [INFO] container/payment-app Initializing connection pool (size=20)
+2026-10-10T11:42:05.100Z stdout F [INFO] Server listening on port 8080
+2026-10-10T11:43:15.340Z stdout F [INFO] Processing batch reconciliation for 50,000 transactions
+2026-10-10T11:43:40.890Z stderr F [WARN] High memory consumption detected: allocated 482MB of 512MB limit
+2026-10-10T11:43:42.105Z stderr F java.lang.OutOfMemoryError: Java heap space
+2026-10-10T11:43:42.106Z stderr F 	at java.base/java.util.Arrays.copyOf(Arrays.java:3537)
+2026-10-10T11:43:42.107Z stderr F 	at java.base/java.io.ByteArrayOutputStream.toByteArray(ByteArrayOutputStream.java:209)
+2026-10-10T11:43:42.108Z stderr F 	at com.company.payment.ReconciliationEngine.process(ReconciliationEngine.java:142)
+2026-10-10T11:43:43.002Z stderr F kernel: [84920.123] Memory cgroup out of memory: Kill process 28491 (java) score 998 or sacrifice child
+2026-10-10T11:43:43.004Z stderr F kernel: [84920.125] Killed process 28491 (java) total-vm:1849204kB, anon-rss:524288kB, file-rss:1240kB
+2026-10-10T11:43:43.150Z stderr F kubelet: Container payment-app in pod payment-service-589f8dc94-p9w7c was terminated with exit code 137 (OOMKilled)
