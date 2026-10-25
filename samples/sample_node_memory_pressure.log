@@ -1,0 +1,15 @@
+--- TELEMETRY LOGS (K8S-EVAL-004: Node Memory Pressure Leading to Eviction of Burstable Pods) ---
+2026-10-25T10:45:00.120Z stdout F [INFO] Worker indexing partition shard_34
+2026-10-25T10:47:11.450Z stderr F [WARN] Host node available memory dropping below safety margins
+2026-10-25T10:47:15.000Z stderr F kubelet: The node was low on resource: memory. Threshold quantity: 100Mi, available: 42Mi
+2026-10-25T10:47:15.110Z stderr F kubelet: Evicting pod analytics/data-indexer-9fc8d5f-m54lw to reclaim 850Mi memory
+2026-10-25T10:47:16.000Z stderr F kubelet: Pod data-indexer-9fc8d5f-m54lw evicted due to node condition NodeHasMemoryPressure
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON                  OBJECT                                       MESSAGE
+3m          Warning   NodeHasMemoryPressure   node/k8s-node-worker-pool-04                Node k8s-node-worker-pool-04 status is now: NodeHasMemoryPressure
+2m          Warning   Evicted                 pod/data-indexer-9fc8d5f-m54lw              The node was low on resource: memory. Threshold quantity: 100Mi, available: 42Mi. Container indexer was using 850Mi.
+2m          Normal    Killing                 pod/data-indexer-9fc8d5f-m54lw              Stopping container indexer
+
+--- STATUS & DESCRIBE ---
+Node Conditions: MemoryPressure=True; Pod Phase: Failed (Reason: Evicted)

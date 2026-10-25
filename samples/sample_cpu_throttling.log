@@ -1,0 +1,16 @@
+--- TELEMETRY LOGS (K8S-EVAL-002: Severe CPU Throttling under Constrained CFS Quotas Causing P99 Latency Spikes) ---
+2026-10-25T09:30:10.100Z stdout F [INFO] Web server running on port 8080 (Gunicorn workers=4)
+2026-10-25T09:31:00.000Z stdout F [INFO] Influx traffic increase detected: 3,200 req/sec
+2026-10-25T09:31:12.340Z stderr F [WARN] Event loop tick delay exceeded 3,450ms (expected <10ms)
+2026-10-25T09:31:15.890Z stderr F [WARN] High CFS quota throttling: 89.4% of execution periods throttled (nr_throttled=447/500)
+2026-10-25T09:31:18.210Z stderr F [ERROR] Worker process 14 heartbeat timeout; unhandled requests queued=2,180
+2026-10-25T09:31:20.400Z stderr F [ERROR] Client downstream timeout: 504 Gateway Timeout on /v1/checkout/process
+2026-10-25T09:31:25.010Z stderr F [WARN] Process CPU quota exhausted: 20ms assigned per 100ms CFS period consumed in 14ms
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON       OBJECT                                  MESSAGE
+2m          Normal    ScalingReplicaSet deployment/checkout-api                 Scaled up replica set checkout-api-68d77f864c to 6
+1m          Warning   Unhealthy    pod/checkout-api-68d77f864c-8j9q1       Readiness probe warning: probe took 4.2s to respond (timeout 1s)
+
+--- STATUS & DESCRIBE ---
+State: Running (Throttled: 89.4% CPU periods), P99 Latency: 4,800ms

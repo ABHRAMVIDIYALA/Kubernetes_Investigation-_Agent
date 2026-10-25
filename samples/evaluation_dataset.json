@@ -1,0 +1,536 @@
+[
+  {
+    "test_case_id": "K8S-EVAL-001",
+    "title": "Container OOMKilled via Linux Cgroup Memory Limit Exhaustion",
+    "category": "OOM_KILLED",
+    "severity": "CRITICAL",
+    "resource_context": {
+      "kind": "Pod",
+      "pod_name": "payment-processor-7db8c94bf5-zk7m2",
+      "namespace": "fintech-prod",
+      "container_name": "reconciliation-worker",
+      "deployment_name": "payment-processor",
+      "node_name": "node-worker-zone-1a",
+      "exit_code": 137
+    },
+    "incident_manifest_snippet": {
+      "resources": {
+        "limits": {
+          "memory": "512Mi",
+          "cpu": "1000m"
+        },
+        "requests": {
+          "memory": "256Mi",
+          "cpu": "500m"
+        }
+      },
+      "env": [
+        {
+          "name": "JAVA_TOOL_OPTIONS",
+          "value": "-Xmx450m -XX:+UseG1GC"
+        }
+      ]
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T08:12:01.210Z stdout F [INFO] Initializing batch transaction processor (threads=16)\n2026-10-25T08:12:05.450Z stdout F [INFO] Connected to PostgreSQL primary at db.internal:5432\n2026-10-25T08:14:22.100Z stdout F [INFO] Ingesting 120,000 international SWIFT reconciliation records\n2026-10-25T08:14:40.890Z stderr F [WARN] Heap utilization at 92% (414MB / 450MB) - triggering concurrent GC cycle\n2026-10-25T08:14:42.105Z stderr F java.lang.OutOfMemoryError: Java heap space\n2026-10-25T08:14:42.106Z stderr F \tat java.base/java.util.Arrays.copyOf(Arrays.java:3537)\n2026-10-25T08:14:42.107Z stderr F \tat java.base/java.io.ByteArrayOutputStream.toByteArray(ByteArrayOutputStream.java:209)\n2026-10-25T08:14:42.108Z stderr F \tat com.fintech.reconcile.BatchTransformer.parseRecords(BatchTransformer.java:184)\n2026-10-25T08:14:43.002Z stderr F kernel: [94820.124] Memory cgroup out of memory: Kill process 38491 (java) score 998 or sacrifice child\n2026-10-25T08:14:43.004Z stderr F kernel: [94820.126] Killed process 38491 (java) total-vm:1948204kB, anon-rss:524288kB, file-rss:1240kB\n2026-10-25T08:14:43.150Z stderr F kubelet: Container reconciliation-worker in pod payment-processor-7db8c94bf5-zk7m2 was terminated with exit code 137 (OOMKilled)",
+      "k8s_events": "LAST SEEN   TYPE      REASON       OBJECT                                              MESSAGE\n1m          Warning   OOMKilling   pod/payment-processor-7db8c94bf5-zk7m2              Memory cgroup out of memory: Kill process 38491 (java) score 998 or sacrifice child\n55s         Normal    Killing      pod/payment-processor-7db8c94bf5-zk7m2              Stopping container reconciliation-worker\n45s         Warning   BackOff      pod/payment-processor-7db8c94bf5-zk7m2              Back-off restarting failed container reconciliation-worker in pod payment-processor-7db8c94bf5-zk7m2_fintech-prod",
+      "describe_status": "State: Terminated (Reason: OOMKilled, Exit Code: 137), Restarts: 4"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The container exceeded its configured cgroup memory limit (512Mi) during bulk record processing. JVM max heap (-Xmx450m) plus JVM off-heap native memory (metaspace, thread stacks, direct buffers) surpassed the Linux cgroup threshold, prompting kernel SIGKILL (137).",
+      "flaw_type": "INSUFFICIENT_MEMORY_LIMIT_FOR_WORKLOAD"
+    },
+    "expected_agent_output": {
+      "primary_category": "OOM_KILLED",
+      "minimum_severity": "CRITICAL",
+      "key_evidence": [
+        "Memory cgroup out of memory: Kill process",
+        "terminated with exit code 137 (OOMKilled)",
+        "java.lang.OutOfMemoryError: Java heap space"
+      ],
+      "confidence_threshold": 0.9
+    },
+    "remediation": {
+      "immediate_actions": [
+        "kubectl scale deployment payment-processor --replicas=0 -n fintech-prod",
+        "Increase container memory limit to 2Gi and requests to 1Gi in deployment manifest",
+        "Set JVM ergonomics: -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+      ],
+      "verification_command": "kubectl get pod payment-processor-7db8c94bf5-zk7m2 -n fintech-prod -o jsonpath='{.status.containerStatuses[*].lastState}'"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-002",
+    "title": "Severe CPU Throttling under Constrained CFS Quotas Causing P99 Latency Spikes",
+    "category": "CPU_THROTTLING",
+    "severity": "HIGH",
+    "resource_context": {
+      "kind": "Pod",
+      "pod_name": "checkout-api-68d77f864c-8j9q1",
+      "namespace": "ecommerce",
+      "container_name": "web-gateway",
+      "deployment_name": "checkout-api",
+      "node_name": "node-worker-zone-1b",
+      "exit_code": null
+    },
+    "incident_manifest_snippet": {
+      "resources": {
+        "limits": {
+          "cpu": "200m",
+          "memory": "1Gi"
+        },
+        "requests": {
+          "cpu": "100m",
+          "memory": "512Mi"
+        }
+      }
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T09:30:10.100Z stdout F [INFO] Web server running on port 8080 (Gunicorn workers=4)\n2026-10-25T09:31:00.000Z stdout F [INFO] Influx traffic increase detected: 3,200 req/sec\n2026-10-25T09:31:12.340Z stderr F [WARN] Event loop tick delay exceeded 3,450ms (expected <10ms)\n2026-10-25T09:31:15.890Z stderr F [WARN] High CFS quota throttling: 89.4% of execution periods throttled (nr_throttled=447/500)\n2026-10-25T09:31:18.210Z stderr F [ERROR] Worker process 14 heartbeat timeout; unhandled requests queued=2,180\n2026-10-25T09:31:20.400Z stderr F [ERROR] Client downstream timeout: 504 Gateway Timeout on /v1/checkout/process\n2026-10-25T09:31:25.010Z stderr F [WARN] Process CPU quota exhausted: 20ms assigned per 100ms CFS period consumed in 14ms",
+      "k8s_events": "LAST SEEN   TYPE      REASON       OBJECT                                  MESSAGE\n2m          Normal    ScalingReplicaSet deployment/checkout-api                 Scaled up replica set checkout-api-68d77f864c to 6\n1m          Warning   Unhealthy    pod/checkout-api-68d77f864c-8j9q1       Readiness probe warning: probe took 4.2s to respond (timeout 1s)",
+      "describe_status": "State: Running (Throttled: 89.4% CPU periods), P99 Latency: 4,800ms"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The container's CPU limit (200m = 20ms quota per 100ms CFS period) is severely undersized for a 4-worker web server handling 3,200 req/sec. The Linux Completely Fair Scheduler (CFS) throttles execution for the remaining 80ms of each period, causing thread stall, event loop lag, and 504 gateway timeouts.",
+      "flaw_type": "AGGRESSIVE_CFS_CPU_LIMIT"
+    },
+    "expected_agent_output": {
+      "primary_category": "CPU_THROTTLING",
+      "minimum_severity": "HIGH",
+      "key_evidence": [
+        "High CFS quota throttling",
+        "CFS period consumed",
+        "Event loop tick delay exceeded"
+      ],
+      "confidence_threshold": 0.85
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Remove or substantially increase `resources.limits.cpu` in deployment spec (recommended: remove CPU limit and set CPU request to 2000m to avoid artificial CFS throttling)",
+        "Enable HorizontalPodAutoscaler based on container CPU utilization"
+      ],
+      "verification_command": "kubectl top pod checkout-api-68d77f864c-8j9q1 -n ecommerce --containers"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-003",
+    "title": "Application Runtime Crash / Panic (SIGSEGV Exit Code 139)",
+    "category": "APPLICATION_PANIC",
+    "severity": "CRITICAL",
+    "resource_context": {
+      "kind": "Pod",
+      "pod_name": "auth-gateway-554488b9c-p21nm",
+      "namespace": "security",
+      "container_name": "jwt-validator",
+      "deployment_name": "auth-gateway",
+      "node_name": "node-worker-zone-1c",
+      "exit_code": 139
+    },
+    "incident_manifest_snippet": {
+      "image": "myrepo.internal/auth/jwt-validator:v3.2.0"
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T10:02:14.000Z stdout F [INFO] JWT Validation daemon initialized on 0.0.0.0:9000\n2026-10-25T10:03:01.120Z stdout F [INFO] Received cryptographic public key refresh callback from Vault\n2026-10-25T10:03:02.450Z stderr F [FATAL] unexpected signal during runtime execution: segmentation fault\n2026-10-25T10:03:02.451Z stderr F [signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x7f88a912e3b4]\n2026-10-25T10:03:02.452Z stderr F runtime stack:\n2026-10-25T10:03:02.453Z stderr F panic: runtime error: invalid memory address or nil pointer dereference\n2026-10-25T10:03:02.454Z stderr F \tgoroutine 42 [running]:\n2026-10-25T10:03:02.455Z stderr F \tgithub.com/company/auth/crypto.VerifySignature(0x0, 0xc00018a000, 0x20)\n2026-10-25T10:03:02.456Z stderr F \t\t/app/crypto/verifier.go:88 +0x3a\n2026-10-25T10:03:02.457Z stderr F \tgithub.com/company/auth/jwt.(*Parser).Validate(0xc0000a2000, 0xc00021e000)\n2026-10-25T10:03:02.458Z stderr F \t\t/app/jwt/parser.go:142 +0x18b\n2026-10-25T10:03:03.010Z stderr F kubelet: Container jwt-validator in pod auth-gateway-554488b9c-p21nm exited with status 139 (SIGSEGV)",
+      "k8s_events": "LAST SEEN   TYPE      REASON      OBJECT                              MESSAGE\n1m          Normal    Pulled      pod/auth-gateway-554488b9c-p21nm    Container image \"myrepo.internal/auth/jwt-validator:v3.2.0\" already present on machine\n45s         Warning   Unhealthy   pod/auth-gateway-554488b9c-p21nm    Liveness probe failed: connection refused\n40s         Normal    Killing     pod/auth-gateway-554488b9c-p21nm    Container jwt-validator failed liveness probe, will be restarted",
+      "describe_status": "State: Terminated (Reason: Error, Exit Code: 139), Last State: ExitCode 139"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The application encountered an uncaught runtime segmentation fault (SIGSEGV, Exit Code 139) triggered by a nil pointer dereference inside the crypto verification library upon receiving a corrupted or uninitialized public key from Vault.",
+      "flaw_type": "NATIVE_SEGMENTATION_FAULT"
+    },
+    "expected_agent_output": {
+      "primary_category": "APPLICATION_PANIC",
+      "minimum_severity": "CRITICAL",
+      "key_evidence": [
+        "segmentation fault",
+        "panic: runtime error: invalid memory address or nil pointer dereference",
+        "exited with status 139"
+      ],
+      "confidence_threshold": 0.9
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Roll back to the previous deployment revision using: kubectl rollout undo deployment/auth-gateway -n security",
+        "Patch `crypto/verifier.go:88` to guard against nil public key pointer during Vault key refresh",
+        "Add integration test verifying Vault key rotation with empty/corrupted response payloads"
+      ],
+      "verification_command": "kubectl logs auth-gateway-554488b9c-p21nm -n security --previous"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-004",
+    "title": "Node Memory Pressure Leading to Eviction of Burstable Pods",
+    "category": "NODE_MEMORY_PRESSURE",
+    "severity": "CRITICAL",
+    "resource_context": {
+      "kind": "Node",
+      "pod_name": "data-indexer-9fc8d5f-m54lw",
+      "namespace": "analytics",
+      "container_name": "indexer",
+      "deployment_name": "data-indexer",
+      "node_name": "k8s-node-worker-pool-04",
+      "exit_code": null
+    },
+    "incident_manifest_snippet": {
+      "node_condition": "MemoryPressure=True",
+      "eviction_threshold": "memory.available < 100Mi"
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T10:45:00.120Z stdout F [INFO] Worker indexing partition shard_34\n2026-10-25T10:47:11.450Z stderr F [WARN] Host node available memory dropping below safety margins\n2026-10-25T10:47:15.000Z stderr F kubelet: The node was low on resource: memory. Threshold quantity: 100Mi, available: 42Mi\n2026-10-25T10:47:15.110Z stderr F kubelet: Evicting pod analytics/data-indexer-9fc8d5f-m54lw to reclaim 850Mi memory\n2026-10-25T10:47:16.000Z stderr F kubelet: Pod data-indexer-9fc8d5f-m54lw evicted due to node condition NodeHasMemoryPressure",
+      "k8s_events": "LAST SEEN   TYPE      REASON                  OBJECT                                       MESSAGE\n3m          Warning   NodeHasMemoryPressure   node/k8s-node-worker-pool-04                Node k8s-node-worker-pool-04 status is now: NodeHasMemoryPressure\n2m          Warning   Evicted                 pod/data-indexer-9fc8d5f-m54lw              The node was low on resource: memory. Threshold quantity: 100Mi, available: 42Mi. Container indexer was using 850Mi.\n2m          Normal    Killing                 pod/data-indexer-9fc8d5f-m54lw              Stopping container indexer",
+      "describe_status": "Node Conditions: MemoryPressure=True; Pod Phase: Failed (Reason: Evicted)"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The worker node k8s-node-worker-pool-04 exhausted available host memory (<100Mi remaining), activating the Kubelet eviction manager. Because data-indexer had burstable QoS and high memory usage, Kubelet evicted it to prevent node-level kernel panic.",
+      "flaw_type": "HOST_NODE_MEMORY_EXHAUSTION"
+    },
+    "expected_agent_output": {
+      "primary_category": "NODE_MEMORY_PRESSURE",
+      "minimum_severity": "CRITICAL",
+      "key_evidence": [
+        "NodeHasMemoryPressure",
+        "The node was low on resource: memory",
+        "evicted due to node condition"
+      ],
+      "confidence_threshold": 0.88
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Cordon and drain unneeded workloads from the affected node: kubectl cordon k8s-node-worker-pool-04",
+        "Inspect memory consumers on host: kubectl describe node k8s-node-worker-pool-04",
+        "Set Guaranteed QoS (`requests == limits`) on critical pods to protect them from Kubelet eviction ranking",
+        "Add node autoscaling or provision additional worker capacity"
+      ],
+      "verification_command": "kubectl get nodes -o wide --show-conditions"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-005",
+    "title": "CrashLoopBackOff Due to Missing Configuration Secret Dependency",
+    "category": "CRASH_LOOP_BACKOFF",
+    "severity": "HIGH",
+    "resource_context": {
+      "kind": "Pod",
+      "pod_name": "inventory-service-679944df-9kll2",
+      "namespace": "logistics",
+      "container_name": "inventory-app",
+      "deployment_name": "inventory-service",
+      "node_name": "node-worker-zone-2a",
+      "exit_code": 1
+    },
+    "incident_manifest_snippet": {
+      "env": [
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": {
+            "secretKeyRef": {
+              "name": "postgres-credentials",
+              "key": "password"
+            }
+          }
+        }
+      ]
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T11:00:01.000Z stdout F [INFO] Booting inventory management service v1.8.0\n2026-10-25T11:00:01.120Z stderr F [FATAL] Configuration load failure: Environment variable 'DB_PASSWORD' is empty or unresolved.\n2026-10-25T11:00:01.122Z stderr F [FATAL] Terminating process with exit code 1\n2026-10-25T11:00:01.200Z stderr F kubelet: Container inventory-app in pod inventory-service-679944df-9kll2 exited with status 1\n2026-10-25T11:00:15.000Z stderr F kubelet: CrashLoopBackOff: Back-off 10s restarting failed container inventory-app\n2026-10-25T11:00:35.000Z stderr F kubelet: CrashLoopBackOff: Back-off 20s restarting failed container inventory-app",
+      "k8s_events": "LAST SEEN   TYPE      REASON       OBJECT                                              MESSAGE\n3m          Warning   Failed       pod/inventory-service-679944df-9kll2                Error: secret \"postgres-credentials\" not found\n2m          Warning   BackOff      pod/inventory-service-679944df-9kll2                Back-off restarting failed container inventory-app in pod inventory-service-679944df-9kll2_logistics\n1m          Warning   BackOff      pod/inventory-service-679944df-9kll2                Back-off restarting failed container inventory-app in pod inventory-service-679944df-9kll2_logistics",
+      "describe_status": "State: Waiting (Reason: CrashLoopBackOff), Restarts: 8"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The container fails immediately on initialization (Exit code 1) because the referenced Kubernetes Secret 'postgres-credentials' does not exist in namespace 'logistics'. Kubelet enters exponential backoff (CrashLoopBackOff).",
+      "flaw_type": "MISSING_SECRET_DEPENDENCY"
+    },
+    "expected_agent_output": {
+      "primary_category": "CRASH_LOOP_BACKOFF",
+      "minimum_severity": "HIGH",
+      "key_evidence": [
+        "CrashLoopBackOff",
+        "secret \"postgres-credentials\" not found",
+        "Back-off restarting failed container"
+      ],
+      "confidence_threshold": 0.9
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Create the missing secret in namespace 'logistics': kubectl create secret generic postgres-credentials --from-literal=password=<db-pass> -n logistics",
+        "Verify secret existence with: kubectl get secret postgres-credentials -n logistics"
+      ],
+      "verification_command": "kubectl get pod inventory-service-679944df-9kll2 -n logistics -w"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-006",
+    "title": "Node Transition to NotReady Due to PLEG (Pod Lifecycle Event Generator) Timeout",
+    "category": "NODE_NOT_READY",
+    "severity": "CRITICAL",
+    "resource_context": {
+      "kind": "Node",
+      "pod_name": "None",
+      "namespace": "kube-system",
+      "container_name": "containerd",
+      "deployment_name": "None",
+      "node_name": "k8s-worker-gpu-02",
+      "exit_code": null
+    },
+    "incident_manifest_snippet": {
+      "node_condition": "Ready=False",
+      "reason": "KubeletNotReady",
+      "message": "PLEG is not healthy: pleg was last seen active 3m40s ago; threshold is 3m0s"
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T11:15:00.000Z stderr F kubelet: [ERROR] container runtime containerd did not respond to ListContainers request within 120s timeout\n2026-10-25T11:16:30.000Z stderr F kubelet: [ERROR] PLEG is not healthy: pleg was last seen active 3m40s ago; threshold is 3m0s\n2026-10-25T11:16:32.000Z stderr F kubelet: Node k8s-worker-gpu-02 status is now: NodeNotReady\n2026-10-25T11:17:00.000Z stderr F containerd: [CRIT] Unresponsive D-Bus connection / systemd cgroup driver lockup",
+      "k8s_events": "LAST SEEN   TYPE      REASON            OBJECT                    MESSAGE\n4m          Warning   PLEGNotHealthy    node/k8s-worker-gpu-02    PLEG is not healthy: pleg was last seen active 3m40s ago; threshold is 3m0s\n3m          Warning   NodeNotReady      node/k8s-worker-gpu-02    Node k8s-worker-gpu-02 status is now: NodeNotReady\n2m          Normal    NodeStatusUnknown node/k8s-worker-gpu-02    Kubelet stopped posting node status",
+      "describe_status": "Ready Condition: False (Reason: KubeletNotReady, PLEGNotHealthy)"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The container runtime (containerd) became deadlocked or unresponsive on node k8s-worker-gpu-02, causing the Kubelet's Pod Lifecycle Event Generator (PLEG) to miss its health heartbeat threshold (>3 minutes). The Kubernetes Node Controller transitioned the node to NotReady.",
+      "flaw_type": "KUBELET_PLEG_TIMEOUT"
+    },
+    "expected_agent_output": {
+      "primary_category": "NODE_NOT_READY",
+      "minimum_severity": "CRITICAL",
+      "key_evidence": [
+        "PLEG is not healthy",
+        "Node k8s-worker-gpu-02 status is now: NodeNotReady",
+        "container runtime containerd did not respond"
+      ],
+      "confidence_threshold": 0.8
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Restart containerd and kubelet services on the affected host: sudo systemctl restart containerd && sudo systemctl restart kubelet",
+        "If node remains unresponsive, cordon and evict workloads: kubectl drain k8s-worker-gpu-02 --ignore-daemonsets --delete-emptydir-data",
+        "Check kernel dmesg for I/O hangs or systemd dbus exhaustion"
+      ],
+      "verification_command": "kubectl get node k8s-worker-gpu-02"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-007",
+    "title": "Readiness and Liveness Health Probe Failure Cascade Under Database Starvation",
+    "category": "PROBE_FAILURE",
+    "severity": "HIGH",
+    "resource_context": {
+      "kind": "Pod",
+      "pod_name": "catalog-api-88df9674c-4xpp9",
+      "namespace": "store",
+      "container_name": "catalog-server",
+      "deployment_name": "catalog-api",
+      "node_name": "node-worker-zone-2b",
+      "exit_code": null
+    },
+    "incident_manifest_snippet": {
+      "livenessProbe": {
+        "httpGet": {
+          "path": "/healthz",
+          "port": 8080
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 10,
+        "timeoutSeconds": 1
+      },
+      "readinessProbe": {
+        "httpGet": {
+          "path": "/ready",
+          "port": 8080
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 5,
+        "timeoutSeconds": 1
+      }
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T11:40:01.000Z stdout F [INFO] Catalog HTTP service handling 4,800 active concurrent connections\n2026-10-25T11:40:15.120Z stderr F [WARN] DB connection pool saturated: 50/50 connections leased, 240 waiting callers\n2026-10-25T11:40:20.000Z stderr F [WARN] Health check endpoint /ready performs deep SQL check 'SELECT 1' and timed out after 1,000ms\n2026-10-25T11:40:21.050Z stderr F kubelet: Readiness probe failed: Get \"http://10.244.3.42:8080/ready\": context deadline exceeded\n2026-10-25T11:40:25.100Z stderr F kubelet: Liveness probe failed: HTTP probe failed with statuscode: 503 Service Unavailable\n2026-10-25T11:40:30.000Z stderr F kubelet: Container catalog-server failed liveness probe, will be restarted",
+      "k8s_events": "LAST SEEN   TYPE      REASON       OBJECT                                MESSAGE\n2m          Warning   Unhealthy    pod/catalog-api-88df9674c-4xpp9       Readiness probe failed: Get \"http://10.244.3.42:8080/ready\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)\n1m          Warning   Unhealthy    pod/catalog-api-88df9674c-4xpp9       Liveness probe failed: HTTP probe failed with statuscode: 503\n50s         Normal    Killing      pod/catalog-api-88df9674c-4xpp9       Container catalog-server failed liveness probe, will be restarted",
+      "describe_status": "Conditions: Ready=False, ContainersReady=False; Restarts: 5"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The `/ready` and `/healthz` probe endpoints perform synchronous database queries. Under database connection pool saturation, health checks timed out beyond the 1-second `timeoutSeconds` setting. Kubelet removed the pod from endpoints, then killed the container via failed liveness probe.",
+      "flaw_type": "SYNCHRONOUS_PROBE_DEADLOCK"
+    },
+    "expected_agent_output": {
+      "primary_category": "PROBE_FAILURE",
+      "minimum_severity": "HIGH",
+      "key_evidence": [
+        "Readiness probe failed",
+        "Liveness probe failed",
+        "context deadline exceeded"
+      ],
+      "confidence_threshold": 0.88
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Decouple liveness/readiness probes from external database connectivity (return HTTP 200 based on process liveness only)",
+        "Increase `timeoutSeconds` from 1s to 5s and `periodSeconds` to 10s",
+        "Implement a `startupProbe` to handle slow application warmups"
+      ],
+      "verification_command": "kubectl describe pod catalog-api-88df9674c-4xpp9 -n store | grep -A 8 'Liveness:'"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-008",
+    "title": "Unschedulable Pod Due to Excessive and Impossible Resource Requests",
+    "category": "INCORRECT_RESOURCE_SPEC",
+    "severity": "HIGH",
+    "resource_context": {
+      "kind": "Pod",
+      "pod_name": "ml-inference-engine-7cc4b749f-x8m2q",
+      "namespace": "machine-learning",
+      "container_name": "model-runner",
+      "deployment_name": "ml-inference-engine",
+      "node_name": null,
+      "exit_code": null
+    },
+    "incident_manifest_snippet": {
+      "resources": {
+        "requests": {
+          "cpu": "128",
+          "memory": "512Gi"
+        },
+        "limits": {
+          "cpu": "128",
+          "memory": "512Gi"
+        }
+      }
+    },
+    "telemetry": {
+      "pod_logs": "(Pod has not started execution. No container stdout/stderr logs produced.)",
+      "k8s_events": "LAST SEEN   TYPE      REASON             OBJECT                                            MESSAGE\n5m          Warning   FailedScheduling   pod/ml-inference-engine-7cc4b749f-x8m2q           0/16 nodes are available: 16 Insufficient cpu, 16 Insufficient memory. preemption: 0/16 nodes are available: 16 No preemption victims found for incoming pod.\n2m          Warning   FailedScheduling   pod/ml-inference-engine-7cc4b749f-x8m2q           0/16 nodes are available: 16 Insufficient cpu, 16 Insufficient memory. preemption: 0/16 nodes are available: 16 No preemption victims found for incoming pod.",
+      "describe_status": "Status: Pending (Reason: Unschedulable - 0/16 nodes available: 16 Insufficient cpu)"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The pod specifies `resources.requests.cpu: 128` and `memory: 512Gi`. The largest available worker node in the cluster only possesses 32 vCPUs and 128Gi RAM. As a single pod cannot span multiple nodes, kube-scheduler cannot place the pod, leaving it perpetually in Pending state.",
+      "flaw_type": "OVERSIZED_RESOURCE_REQUEST"
+    },
+    "expected_agent_output": {
+      "primary_category": "INCORRECT_RESOURCE_SPEC",
+      "minimum_severity": "HIGH",
+      "key_evidence": [
+        "0/16 nodes are available",
+        "Insufficient cpu",
+        "FailedScheduling"
+      ],
+      "confidence_threshold": 0.85
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Inspect cluster node allocatable capacity: kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU:.status.allocatable.cpu,MEM:.status.allocatable.memory",
+        "Right-size `resources.requests.cpu` and `resources.requests.memory` in the deployment manifest to fit within worker node allocatable limits (e.g. cpu: 4, memory: 16Gi)",
+        "If 128 vCPUs is genuinely required, provision specialized high-core node groups with appropriate nodeSelectors/tolerations"
+      ],
+      "verification_command": "kubectl get pod ml-inference-engine-7cc4b749f-x8m2q -n machine-learning"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-009",
+    "title": "Service Has No Endpoints Due to Label Selector Mismatch",
+    "category": "SERVICE_NO_ENDPOINTS",
+    "severity": "CRITICAL",
+    "resource_context": {
+      "kind": "Service",
+      "pod_name": "frontend-web-74b6df54c-v89qp",
+      "namespace": "production",
+      "container_name": "nginx",
+      "deployment_name": "frontend-web",
+      "node_name": "node-worker-zone-1a",
+      "exit_code": null
+    },
+    "incident_manifest_snippet": {
+      "service_spec": {
+        "name": "frontend-service",
+        "selector": {
+          "app": "web-frontend"
+        }
+      },
+      "deployment_pod_template": {
+        "metadata": {
+          "labels": {
+            "app": "frontend-web"
+          }
+        }
+      }
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T12:00:00.000Z stdout F [INFO] Nginx master process started\n2026-10-25T12:00:01.000Z stdout F [INFO] Configuration reloaded successfully\n2026-10-25T12:05:00.000Z stdout F (Zero ingress requests received by Nginx container over 5 minutes)",
+      "k8s_events": "LAST SEEN   TYPE      REASON       OBJECT                       MESSAGE\n5m          Normal    Successful   deployment/frontend-web      Scaled up replica set frontend-web-74b6df54c to 3\n3m          Warning   NoEndpoints  service/frontend-service     Service has 0 endpoints matching selector app=web-frontend",
+      "describe_status": "Endpoints: <none>, Selector: app=web-frontend, Pod Labels: app=frontend-web"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The Service `frontend-service` defines selector `app: web-frontend`, whereas the Deployment pod template defines label `app: frontend-web`. Because no pods match the selector, kube-proxy creates no iptables/IPVS routing rules and EndpointSlice contains 0 addresses, causing 503 / connection refused for all client traffic.",
+      "flaw_type": "SELECTOR_LABEL_TYPO_MISMATCH"
+    },
+    "expected_agent_output": {
+      "primary_category": "SERVICE_NO_ENDPOINTS",
+      "minimum_severity": "CRITICAL",
+      "key_evidence": [
+        "Endpoints: <none>",
+        "Service has 0 endpoints matching selector",
+        "app=web-frontend"
+      ],
+      "confidence_threshold": 0.85
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Align the Service selector to match pod labels: kubectl patch service frontend-service -n production -p '{\"spec\":{\"selector\":{\"app\":\"frontend-web\"}}}'",
+        "Verify EndpointSlice population: kubectl get endpoints frontend-service -n production"
+      ],
+      "verification_command": "kubectl get endpoints frontend-service -n production"
+    }
+  },
+  {
+    "test_case_id": "K8S-EVAL-010",
+    "title": "Service Routes Traffic to Unhealthy / Wrong Canary Pods via Overlapping Selector",
+    "category": "SERVICE_ROUTES_TO_UNHEALTHY_PODS",
+    "severity": "HIGH",
+    "resource_context": {
+      "kind": "Service",
+      "pod_name": "api-gateway-canary-88cf5-99zxc",
+      "namespace": "production",
+      "container_name": "gateway",
+      "deployment_name": "api-gateway-canary",
+      "node_name": "node-worker-zone-2c",
+      "exit_code": null
+    },
+    "incident_manifest_snippet": {
+      "service_selector": {
+        "app": "api-gateway"
+      },
+      "production_deployment_labels": {
+        "app": "api-gateway",
+        "release": "stable"
+      },
+      "canary_deployment_labels": {
+        "app": "api-gateway",
+        "release": "canary",
+        "env": "experimental"
+      }
+    },
+    "telemetry": {
+      "pod_logs": "2026-10-25T12:20:00.120Z stdout F [INFO] API Gateway Canary v2.9-beta starting\n2026-10-25T12:20:05.400Z stderr F [ERROR] Missing Redis schema migration v29: table 'rate_limits_v2' does not exist\n2026-10-25T12:20:06.100Z stderr F [ERROR] Responding HTTP 500 Internal Server Error to client request /api/v1/auth\n2026-10-25T12:20:10.220Z stderr F [ERROR] Responding HTTP 500 Internal Server Error to client request /api/v1/orders",
+      "k8s_events": "LAST SEEN   TYPE      REASON       OBJECT                             MESSAGE\n2m          Normal    Updated      endpoints/api-gateway              Updated endpoints with 4 addresses: 10.244.1.10, 10.244.1.11, 10.244.1.12, 10.244.2.99\n1m          Warning   Unhealthy    pod/api-gateway-canary-88cf5-99zxc Readiness probe HTTP 500 on /healthz",
+      "describe_status": "Endpoints: 10.244.1.10:8080, 10.244.1.11:8080, 10.244.1.12:8080, 10.244.2.99:8080 (10.244.2.99 is canary failing requests)"
+    },
+    "ground_truth_rca": {
+      "root_cause": "The production Service `api-gateway` has an overly broad selector `app: api-gateway`. When an experimental canary deployment was created sharing `app: api-gateway` without selector isolation (`release: stable`), Kubernetes automatically registered the broken canary pod into the production Service endpoints pool, corrupting 25% of all live user traffic with HTTP 500 errors.",
+      "flaw_type": "OVERLAPPING_SELECTOR_TRAFFIC_LEAK"
+    },
+    "expected_agent_output": {
+      "primary_category": "SERVICE_ROUTES_TO_UNHEALTHY_PODS",
+      "minimum_severity": "HIGH",
+      "key_evidence": [
+        "Responding HTTP 500 Internal Server Error",
+        "Updated endpoints with 4 addresses",
+        "Readiness probe HTTP 500"
+      ],
+      "confidence_threshold": 0.85
+    },
+    "remediation": {
+      "immediate_actions": [
+        "Update Service selector to specifically target stable release: kubectl patch service api-gateway -n production -p '{\"spec\":{\"selector\":{\"app\":\"api-gateway\",\"release\":\"stable\"}}}'",
+        "Alternatively, isolate canary deployment with distinct `app: api-gateway-canary` label",
+        "Configure readinessProbe on canary pods so failing pods are not added to endpoints before schema readiness"
+      ],
+      "verification_command": "kubectl get endpoints api-gateway -n production -o wide"
+    }
+  }
+]

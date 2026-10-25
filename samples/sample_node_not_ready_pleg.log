@@ -1,0 +1,14 @@
+--- TELEMETRY LOGS (K8S-EVAL-006: Node Transition to NotReady Due to PLEG (Pod Lifecycle Event Generator) Timeout) ---
+2026-10-25T11:15:00.000Z stderr F kubelet: [ERROR] container runtime containerd did not respond to ListContainers request within 120s timeout
+2026-10-25T11:16:30.000Z stderr F kubelet: [ERROR] PLEG is not healthy: pleg was last seen active 3m40s ago; threshold is 3m0s
+2026-10-25T11:16:32.000Z stderr F kubelet: Node k8s-worker-gpu-02 status is now: NodeNotReady
+2026-10-25T11:17:00.000Z stderr F containerd: [CRIT] Unresponsive D-Bus connection / systemd cgroup driver lockup
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON            OBJECT                    MESSAGE
+4m          Warning   PLEGNotHealthy    node/k8s-worker-gpu-02    PLEG is not healthy: pleg was last seen active 3m40s ago; threshold is 3m0s
+3m          Warning   NodeNotReady      node/k8s-worker-gpu-02    Node k8s-worker-gpu-02 status is now: NodeNotReady
+2m          Normal    NodeStatusUnknown node/k8s-worker-gpu-02    Kubelet stopped posting node status
+
+--- STATUS & DESCRIBE ---
+Ready Condition: False (Reason: KubeletNotReady, PLEGNotHealthy)

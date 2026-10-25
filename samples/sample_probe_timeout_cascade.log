@@ -1,0 +1,16 @@
+--- TELEMETRY LOGS (K8S-EVAL-007: Readiness and Liveness Health Probe Failure Cascade Under Database Starvation) ---
+2026-10-25T11:40:01.000Z stdout F [INFO] Catalog HTTP service handling 4,800 active concurrent connections
+2026-10-25T11:40:15.120Z stderr F [WARN] DB connection pool saturated: 50/50 connections leased, 240 waiting callers
+2026-10-25T11:40:20.000Z stderr F [WARN] Health check endpoint /ready performs deep SQL check 'SELECT 1' and timed out after 1,000ms
+2026-10-25T11:40:21.050Z stderr F kubelet: Readiness probe failed: Get "http://10.244.3.42:8080/ready": context deadline exceeded
+2026-10-25T11:40:25.100Z stderr F kubelet: Liveness probe failed: HTTP probe failed with statuscode: 503 Service Unavailable
+2026-10-25T11:40:30.000Z stderr F kubelet: Container catalog-server failed liveness probe, will be restarted
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON       OBJECT                                MESSAGE
+2m          Warning   Unhealthy    pod/catalog-api-88df9674c-4xpp9       Readiness probe failed: Get "http://10.244.3.42:8080/ready": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+1m          Warning   Unhealthy    pod/catalog-api-88df9674c-4xpp9       Liveness probe failed: HTTP probe failed with statuscode: 503
+50s         Normal    Killing      pod/catalog-api-88df9674c-4xpp9       Container catalog-server failed liveness probe, will be restarted
+
+--- STATUS & DESCRIBE ---
+Conditions: Ready=False, ContainersReady=False; Restarts: 5

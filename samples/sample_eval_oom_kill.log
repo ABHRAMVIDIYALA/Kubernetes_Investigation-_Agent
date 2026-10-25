@@ -1,0 +1,21 @@
+--- TELEMETRY LOGS (K8S-EVAL-001: Container OOMKilled via Linux Cgroup Memory Limit Exhaustion) ---
+2026-10-25T08:12:01.210Z stdout F [INFO] Initializing batch transaction processor (threads=16)
+2026-10-25T08:12:05.450Z stdout F [INFO] Connected to PostgreSQL primary at db.internal:5432
+2026-10-25T08:14:22.100Z stdout F [INFO] Ingesting 120,000 international SWIFT reconciliation records
+2026-10-25T08:14:40.890Z stderr F [WARN] Heap utilization at 92% (414MB / 450MB) - triggering concurrent GC cycle
+2026-10-25T08:14:42.105Z stderr F java.lang.OutOfMemoryError: Java heap space
+2026-10-25T08:14:42.106Z stderr F 	at java.base/java.util.Arrays.copyOf(Arrays.java:3537)
+2026-10-25T08:14:42.107Z stderr F 	at java.base/java.io.ByteArrayOutputStream.toByteArray(ByteArrayOutputStream.java:209)
+2026-10-25T08:14:42.108Z stderr F 	at com.fintech.reconcile.BatchTransformer.parseRecords(BatchTransformer.java:184)
+2026-10-25T08:14:43.002Z stderr F kernel: [94820.124] Memory cgroup out of memory: Kill process 38491 (java) score 998 or sacrifice child
+2026-10-25T08:14:43.004Z stderr F kernel: [94820.126] Killed process 38491 (java) total-vm:1948204kB, anon-rss:524288kB, file-rss:1240kB
+2026-10-25T08:14:43.150Z stderr F kubelet: Container reconciliation-worker in pod payment-processor-7db8c94bf5-zk7m2 was terminated with exit code 137 (OOMKilled)
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON       OBJECT                                              MESSAGE
+1m          Warning   OOMKilling   pod/payment-processor-7db8c94bf5-zk7m2              Memory cgroup out of memory: Kill process 38491 (java) score 998 or sacrifice child
+55s         Normal    Killing      pod/payment-processor-7db8c94bf5-zk7m2              Stopping container reconciliation-worker
+45s         Warning   BackOff      pod/payment-processor-7db8c94bf5-zk7m2              Back-off restarting failed container reconciliation-worker in pod payment-processor-7db8c94bf5-zk7m2_fintech-prod
+
+--- STATUS & DESCRIBE ---
+State: Terminated (Reason: OOMKilled, Exit Code: 137), Restarts: 4

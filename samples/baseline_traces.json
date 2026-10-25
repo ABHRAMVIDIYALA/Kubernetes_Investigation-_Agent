@@ -1,0 +1,476 @@
+{
+  "metadata": {
+    "benchmark_name": "Kubernetes Diagnostic Agent Evaluation Benchmark (Baseline v1.0)",
+    "execution_timestamp": "2026-10-24T18:00:00.000000+00:00",
+    "total_test_cases": 10,
+    "accuracy_rate_pct": 40.0,
+    "average_latency_ms": 2.25,
+    "total_evidence_extracted": 17
+  },
+  "traces": [
+    {
+      "trace_id": "base-eval-001",
+      "test_case_id": "K8S-EVAL-001",
+      "title": "Container OOMKilled via Linux Cgroup Memory Limit Exhaustion",
+      "execution_timestamp": "2026-10-24T18:00:00.100000+00:00",
+      "latency_ms": 3.42,
+      "evaluation_verdict": {
+        "status": "PASS",
+        "category_match": true,
+        "expected_category": "OOM_KILLED",
+        "detected_category": "OOM_KILLED",
+        "detected_severity": "CRITICAL",
+        "confidence_score": 0.98,
+        "confidence_threshold_met": true
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1962,
+        "total_lines_parsed": 20,
+        "extracted_resource_context": {
+          "pod_name": "payment-processor-7db8c94bf5-zk7m2",
+          "namespace": "fintech-prod",
+          "container_name": "reconciliation-worker",
+          "node_name": null,
+          "exit_code": 137
+        }
+      },
+      "step_2_evidence_correlation": [
+        {
+          "line_number": 5,
+          "matched_pattern": "java.lang.OutOfMemoryError: Java heap space",
+          "significance": "Application runtime memory exhaustion observed prior to exit",
+          "log_level": "ERROR",
+          "raw_snippet": "java.lang.OutOfMemoryError: Java heap space"
+        },
+        {
+          "line_number": 9,
+          "matched_pattern": "cgroup out of memory: Kill process",
+          "significance": "Direct evidence of Linux cgroup OOM kill",
+          "log_level": "ERROR",
+          "raw_snippet": "kernel: Memory cgroup out of memory: Kill process"
+        },
+        {
+          "line_number": 15,
+          "matched_pattern": "cgroup out of memory: Kill process",
+          "significance": "Kubelet OOMKilling event",
+          "log_level": "WARNING",
+          "raw_snippet": "Warning OOMKilling pod/payment-processor"
+        },
+        {
+          "line_number": 17,
+          "matched_pattern": "Back-off restarting failed container",
+          "significance": "Kubelet back-off restart",
+          "log_level": "WARNING",
+          "raw_snippet": "Warning BackOff pod/payment-processor"
+        }
+      ],
+      "step_3_rca_and_remediation": {
+        "summary": "Container terminated due to Out-Of-Memory (OOMKilled - Exit code 137).",
+        "root_cause_analysis": "The container exceeded its configured memory limit.",
+        "remediation_steps": ["Increase resources.limits.memory"],
+        "verification_commands": ["kubectl describe pod payment-processor-7db8c94bf5-zk7m2"]
+      }
+    },
+    {
+      "trace_id": "base-eval-002",
+      "test_case_id": "K8S-EVAL-002",
+      "title": "Severe CPU Throttling under Constrained CFS Quotas Causing P99 Latency Spikes",
+      "execution_timestamp": "2026-10-24T18:00:00.200000+00:00",
+      "latency_ms": 2.15,
+      "evaluation_verdict": {
+        "status": "FAIL",
+        "category_match": false,
+        "expected_category": "CPU_THROTTLING",
+        "detected_category": "UNKNOWN_ANOMALY",
+        "detected_severity": "MEDIUM",
+        "confidence_score": 0.40,
+        "confidence_threshold_met": false
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1227,
+        "total_lines_parsed": 15,
+        "extracted_resource_context": {
+          "pod_name": "checkout-api-68d77f864c-8j9q1",
+          "namespace": "ecommerce",
+          "container_name": "web-gateway",
+          "node_name": null,
+          "exit_code": null
+        }
+      },
+      "step_2_evidence_correlation": [],
+      "step_3_rca_and_remediation": {
+        "summary": "Unknown anomaly detected in workload telemetry.",
+        "root_cause_analysis": "Log telemetry contains generic warnings but no known baseline rule matched.",
+        "remediation_steps": ["Inspect application logs manually"],
+        "verification_commands": ["kubectl logs checkout-api-68d77f864c-8j9q1 -n ecommerce"]
+      }
+    },
+    {
+      "trace_id": "base-eval-003",
+      "test_case_id": "K8S-EVAL-003",
+      "title": "Application Runtime Crash / Panic (SIGSEGV Exit Code 139)",
+      "execution_timestamp": "2026-10-24T18:00:00.300000+00:00",
+      "latency_ms": 2.85,
+      "evaluation_verdict": {
+        "status": "PASS",
+        "category_match": true,
+        "expected_category": "APPLICATION_PANIC",
+        "detected_category": "APPLICATION_PANIC",
+        "detected_severity": "CRITICAL",
+        "confidence_score": 0.98,
+        "confidence_threshold_met": true
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1843,
+        "total_lines_parsed": 22,
+        "extracted_resource_context": {
+          "pod_name": "order-validator-6bc598fbd-4mk9p",
+          "namespace": "logistics-prod",
+          "container_name": "schema-validator",
+          "node_name": null,
+          "exit_code": 139
+        }
+      },
+      "step_2_evidence_correlation": [
+        {
+          "line_number": 8,
+          "matched_pattern": "Segmentation fault",
+          "significance": "Application segfault",
+          "log_level": "FATAL",
+          "raw_snippet": "fatal error: unexpected signal during runtime: Segmentation fault"
+        },
+        {
+          "line_number": 15,
+          "matched_pattern": "exit code: 139",
+          "significance": "SIGSEGV exit code",
+          "log_level": "ERROR",
+          "raw_snippet": "terminated with exit code 139"
+        },
+        {
+          "line_number": 20,
+          "matched_pattern": "Back-off restarting failed container",
+          "significance": "Kubelet back-off",
+          "log_level": "WARNING",
+          "raw_snippet": "Warning BackOff restarting failed container"
+        },
+        {
+          "line_number": 22,
+          "matched_pattern": "Exit Code: 139",
+          "significance": "Describe status exit code",
+          "log_level": null,
+          "raw_snippet": "State: Terminated (Reason: Error, Exit Code: 139)"
+        }
+      ],
+      "step_3_rca_and_remediation": {
+        "summary": "Application crashed abruptly due to SIGSEGV.",
+        "root_cause_analysis": "Memory access violation causing process crash.",
+        "remediation_steps": ["Debug binary crash dump"],
+        "verification_commands": ["kubectl describe pod order-validator-6bc598fbd-4mk9p -n logistics-prod"]
+      }
+    },
+    {
+      "trace_id": "base-eval-004",
+      "test_case_id": "K8S-EVAL-004",
+      "title": "Node Memory Pressure Leading to Eviction of Burstable Pods",
+      "execution_timestamp": "2026-10-24T18:00:00.400000+00:00",
+      "latency_ms": 1.95,
+      "evaluation_verdict": {
+        "status": "FAIL",
+        "category_match": false,
+        "expected_category": "NODE_MEMORY_PRESSURE",
+        "detected_category": "UNKNOWN_ANOMALY",
+        "detected_severity": "MEDIUM",
+        "confidence_score": 0.40,
+        "confidence_threshold_met": false
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1361,
+        "total_lines_parsed": 18,
+        "extracted_resource_context": {
+          "pod_name": "report-worker-59b4c89-px9l1",
+          "namespace": "analytics-prod",
+          "container_name": "pdf-renderer",
+          "node_name": null,
+          "exit_code": null
+        }
+      },
+      "step_2_evidence_correlation": [],
+      "step_3_rca_and_remediation": {
+        "summary": "Unknown anomaly detected.",
+        "root_cause_analysis": "Unclassified pod failure without active category match.",
+        "remediation_steps": ["Inspect pod events manually"],
+        "verification_commands": ["kubectl get events -n analytics-prod"]
+      }
+    },
+    {
+      "trace_id": "base-eval-005",
+      "test_case_id": "K8S-EVAL-005",
+      "title": "CrashLoopBackOff Due to Missing Configuration Secret Dependency",
+      "execution_timestamp": "2026-10-24T18:00:00.500000+00:00",
+      "latency_ms": 2.78,
+      "evaluation_verdict": {
+        "status": "PASS",
+        "category_match": true,
+        "expected_category": "CRASH_LOOP_BACKOFF",
+        "detected_category": "CRASH_LOOP_BACKOFF",
+        "detected_severity": "HIGH",
+        "confidence_score": 0.98,
+        "confidence_threshold_met": true
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1486,
+        "total_lines_parsed": 19,
+        "extracted_resource_context": {
+          "pod_name": "auth-service-78f99bc795-w89xp",
+          "namespace": "security-core",
+          "container_name": "oauth-authenticator",
+          "node_name": null,
+          "exit_code": 1
+        }
+      },
+      "step_2_evidence_correlation": [
+        {
+          "line_number": 5,
+          "matched_pattern": "Back-off restarting failed container",
+          "significance": "Repeated crash restarts",
+          "log_level": "WARNING",
+          "raw_snippet": "Warning BackOff restarting failed container"
+        },
+        {
+          "line_number": 9,
+          "matched_pattern": "CrashLoopBackOff",
+          "significance": "Pod in CrashLoopBackOff",
+          "log_level": "WARNING",
+          "raw_snippet": "Status changed to CrashLoopBackOff"
+        },
+        {
+          "line_number": 14,
+          "matched_pattern": "restart count: 6",
+          "significance": "Restart count incremented",
+          "log_level": "INFO",
+          "raw_snippet": "restart count: 6"
+        },
+        {
+          "line_number": 19,
+          "matched_pattern": "Back-off restarting failed container",
+          "significance": "Kubelet backoff event",
+          "log_level": "WARNING",
+          "raw_snippet": "Warning BackOff pod/auth-service"
+        }
+      ],
+      "step_3_rca_and_remediation": {
+        "summary": "Container in CrashLoopBackOff state.",
+        "root_cause_analysis": "Process exits immediately after start.",
+        "remediation_steps": ["Inspect application configuration and logs"],
+        "verification_commands": ["kubectl logs auth-service-78f99bc795-w89xp -n security-core --previous"]
+      }
+    },
+    {
+      "trace_id": "base-eval-006",
+      "test_case_id": "K8S-EVAL-006",
+      "title": "Node Transition to NotReady Due to PLEG (Pod Lifecycle Event Generator) Timeout",
+      "execution_timestamp": "2026-10-24T18:00:00.600000+00:00",
+      "latency_ms": 1.88,
+      "evaluation_verdict": {
+        "status": "FAIL",
+        "category_match": false,
+        "expected_category": "NODE_NOT_READY",
+        "detected_category": "UNKNOWN_ANOMALY",
+        "detected_severity": "MEDIUM",
+        "confidence_score": 0.40,
+        "confidence_threshold_met": false
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1164,
+        "total_lines_parsed": 17,
+        "extracted_resource_context": {
+          "pod_name": "worker-daemon-94bc7d62f-48n2x",
+          "namespace": "kube-system",
+          "container_name": "daemon",
+          "node_name": null,
+          "exit_code": null
+        }
+      },
+      "step_2_evidence_correlation": [],
+      "step_3_rca_and_remediation": {
+        "summary": "Unclassified cluster anomaly.",
+        "root_cause_analysis": "No known baseline pattern matched.",
+        "remediation_steps": ["Inspect node events manually"],
+        "verification_commands": ["kubectl get nodes"]
+      }
+    },
+    {
+      "trace_id": "base-eval-007",
+      "test_case_id": "K8S-EVAL-007",
+      "title": "Readiness and Liveness Health Probe Failure Cascade Under Database Starvation",
+      "execution_timestamp": "2026-10-24T18:00:00.700000+00:00",
+      "latency_ms": 2.45,
+      "evaluation_verdict": {
+        "status": "PASS",
+        "category_match": true,
+        "expected_category": "PROBE_FAILURE",
+        "detected_category": "PROBE_FAILURE",
+        "detected_severity": "HIGH",
+        "confidence_score": 0.89,
+        "confidence_threshold_met": true
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1532,
+        "total_lines_parsed": 20,
+        "extracted_resource_context": {
+          "pod_name": "inventory-api-74dfc78d49-5tx7b",
+          "namespace": "warehouse-prod",
+          "container_name": "inventory-server",
+          "node_name": null,
+          "exit_code": null
+        }
+      },
+      "step_2_evidence_correlation": [
+        {
+          "line_number": 8,
+          "matched_pattern": "Liveness probe failed",
+          "significance": "Kubelet probe timeout",
+          "log_level": "WARNING",
+          "raw_snippet": "Warning Unhealthy Liveness probe failed"
+        },
+        {
+          "line_number": 12,
+          "matched_pattern": "Readiness probe failed",
+          "significance": "Readiness probe failed",
+          "log_level": "WARNING",
+          "raw_snippet": "Warning Unhealthy Readiness probe failed: HTTP probe failed with statuscode: 503"
+        },
+        {
+          "line_number": 16,
+          "matched_pattern": "Killing container",
+          "significance": "Container restart triggered",
+          "log_level": "NORMAL",
+          "raw_snippet": "Normal Killing Container inventory-server failed liveness probe"
+        }
+      ],
+      "step_3_rca_and_remediation": {
+        "summary": "Health probe failure caused container restart.",
+        "root_cause_analysis": "Application failed HTTP /healthz probe checks within configured timeout.",
+        "remediation_steps": ["Check downstream connectivity and probe timeouts"],
+        "verification_commands": ["kubectl describe pod inventory-api-74dfc78d49-5tx7b -n warehouse-prod"]
+      }
+    },
+    {
+      "trace_id": "base-eval-008",
+      "test_case_id": "K8S-EVAL-008",
+      "title": "Unschedulable Pod Due to Excessive and Impossible Resource Requests",
+      "execution_timestamp": "2026-10-24T18:00:00.800000+00:00",
+      "latency_ms": 1.55,
+      "evaluation_verdict": {
+        "status": "FAIL",
+        "category_match": false,
+        "expected_category": "INCORRECT_RESOURCE_SPEC",
+        "detected_category": "UNKNOWN_ANOMALY",
+        "detected_severity": "LOW",
+        "confidence_score": 0.10,
+        "confidence_threshold_met": false
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 927,
+        "total_lines_parsed": 13,
+        "extracted_resource_context": {
+          "pod_name": "ai-inference-gpu-846dc7578b-mpx9q",
+          "namespace": "machine-learning",
+          "container_name": "tensor-worker",
+          "node_name": null,
+          "exit_code": null
+        }
+      },
+      "step_2_evidence_correlation": [],
+      "step_3_rca_and_remediation": {
+        "summary": "Unclassified anomaly.",
+        "root_cause_analysis": "No matching baseline rule for unschedulable pod.",
+        "remediation_steps": ["Check scheduler events manually"],
+        "verification_commands": ["kubectl describe pod ai-inference-gpu-846dc7578b-mpx9q -n machine-learning"]
+      }
+    },
+    {
+      "trace_id": "base-eval-009",
+      "test_case_id": "K8S-EVAL-009",
+      "title": "Service Has No Endpoints Due to Label Selector Mismatch",
+      "execution_timestamp": "2026-10-24T18:00:00.900000+00:00",
+      "latency_ms": 1.40,
+      "evaluation_verdict": {
+        "status": "FAIL",
+        "category_match": false,
+        "expected_category": "SERVICE_NO_ENDPOINTS",
+        "detected_category": "UNKNOWN_ANOMALY",
+        "detected_severity": "LOW",
+        "confidence_score": 0.10,
+        "confidence_threshold_met": false
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 794,
+        "total_lines_parsed": 12,
+        "extracted_resource_context": {
+          "pod_name": "order-fulfillment-svc",
+          "namespace": "logistics-prod",
+          "container_name": null,
+          "node_name": null,
+          "exit_code": null
+        }
+      },
+      "step_2_evidence_correlation": [],
+      "step_3_rca_and_remediation": {
+        "summary": "Unclassified anomaly.",
+        "root_cause_analysis": "No matching baseline rule for service endpoints.",
+        "remediation_steps": ["Inspect endpoints manually"],
+        "verification_commands": ["kubectl get ep order-fulfillment-svc -n logistics-prod"]
+      }
+    },
+    {
+      "trace_id": "base-eval-010",
+      "test_case_id": "K8S-EVAL-010",
+      "title": "Service Routes Traffic to Unhealthy / Wrong Canary Pods via Overlapping Selector",
+      "execution_timestamp": "2026-10-24T18:00:01.000000+00:00",
+      "latency_ms": 1.95,
+      "evaluation_verdict": {
+        "status": "FAIL",
+        "category_match": false,
+        "expected_category": "SERVICE_ROUTES_TO_UNHEALTHY_PODS",
+        "detected_category": "UNKNOWN_ANOMALY",
+        "detected_severity": "MEDIUM",
+        "confidence_score": 0.40,
+        "confidence_threshold_met": false
+      },
+      "step_1_input_ingestion": {
+        "raw_telemetry_bytes": 1079,
+        "total_lines_parsed": 15,
+        "extracted_resource_context": {
+          "pod_name": "checkout-canary-74f884c-p8q1m",
+          "namespace": "ecommerce",
+          "container_name": "cart-api",
+          "node_name": null,
+          "exit_code": null
+        }
+      },
+      "step_2_evidence_correlation": [
+        {
+          "line_number": 4,
+          "matched_pattern": "HTTP/1.1 500 Internal Server Error",
+          "significance": "500 error logged",
+          "log_level": "ERROR",
+          "raw_snippet": "500 Internal Server Error"
+        },
+        {
+          "line_number": 8,
+          "matched_pattern": "Unhealthy pod responding to traffic",
+          "significance": "Canary error",
+          "log_level": "WARN",
+          "raw_snippet": "Unhealthy canary responding to service traffic"
+        }
+      ],
+      "step_3_rca_and_remediation": {
+        "summary": "Unknown anomaly with 500 server errors.",
+        "root_cause_analysis": "No specialized rule for service canary routing.",
+        "remediation_steps": ["Inspect service endpoints"],
+        "verification_commands": ["kubectl describe svc -n ecommerce"]
+      }
+    }
+  ]
+}

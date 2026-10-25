@@ -1,0 +1,10 @@
+2026-10-10T12:05:00.001Z stdout F [INFO] pod/order-processor-78d46bf7b-2v4lk namespace/ecommerce Initializing worker container/order-worker
+2026-10-10T12:05:01.320Z stderr F [ERROR] dial tcp: lookup postgres-cluster.db.svc.cluster.local on 10.96.0.10:53: read udp 10.244.1.45:49182->10.96.0.10:53: i/o timeout
+2026-10-10T12:05:05.540Z stderr F [FATAL] Failed to initialize database connection: context deadline exceeded
+2026-10-10T12:05:05.541Z stderr F panic: runtime error: database unavailable at startup
+2026-10-10T12:05:05.542Z stderr F goroutine 1 [running]:
+2026-10-10T12:05:05.543Z stderr F main.main()
+2026-10-10T12:05:05.544Z stderr F 	/app/cmd/server.go:48 +0x145
+2026-10-10T12:05:06.100Z stderr F kubelet: Container order-worker exited with status 1
+2026-10-10T12:05:18.230Z stderr F kubelet: Back-off restarting failed container order-worker in pod order-processor-78d46bf7b-2v4lk_ecommerce
+2026-10-10T12:05:32.450Z stderr F kubelet: Error: pod order-processor-78d46bf7b-2v4lk container order-worker is crashing (CrashLoopBackOff)

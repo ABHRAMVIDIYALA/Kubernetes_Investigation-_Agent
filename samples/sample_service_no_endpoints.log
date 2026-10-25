@@ -1,0 +1,12 @@
+--- TELEMETRY LOGS (K8S-EVAL-009: Service Has No Endpoints Due to Label Selector Mismatch) ---
+2026-10-25T12:00:00.000Z stdout F [INFO] Nginx master process started
+2026-10-25T12:00:01.000Z stdout F [INFO] Configuration reloaded successfully
+2026-10-25T12:05:00.000Z stdout F (Zero ingress requests received by Nginx container over 5 minutes)
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON       OBJECT                       MESSAGE
+5m          Normal    Successful   deployment/frontend-web      Scaled up replica set frontend-web-74b6df54c to 3
+3m          Warning   NoEndpoints  service/frontend-service     Service has 0 endpoints matching selector app=web-frontend
+
+--- STATUS & DESCRIBE ---
+Endpoints: <none>, Selector: app=web-frontend, Pod Labels: app=frontend-web

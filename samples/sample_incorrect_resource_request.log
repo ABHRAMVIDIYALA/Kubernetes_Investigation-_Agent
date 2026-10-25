@@ -1,0 +1,10 @@
+--- TELEMETRY LOGS (K8S-EVAL-008: Unschedulable Pod Due to Excessive and Impossible Resource Requests) ---
+(Pod has not started execution. No container stdout/stderr logs produced.)
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON             OBJECT                                            MESSAGE
+5m          Warning   FailedScheduling   pod/ml-inference-engine-7cc4b749f-x8m2q           0/16 nodes are available: 16 Insufficient cpu, 16 Insufficient memory. preemption: 0/16 nodes are available: 16 No preemption victims found for incoming pod.
+2m          Warning   FailedScheduling   pod/ml-inference-engine-7cc4b749f-x8m2q           0/16 nodes are available: 16 Insufficient cpu, 16 Insufficient memory. preemption: 0/16 nodes are available: 16 No preemption victims found for incoming pod.
+
+--- STATUS & DESCRIBE ---
+Status: Pending (Reason: Unschedulable - 0/16 nodes available: 16 Insufficient cpu)

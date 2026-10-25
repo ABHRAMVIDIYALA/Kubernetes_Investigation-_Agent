@@ -1,0 +1,22 @@
+--- TELEMETRY LOGS (K8S-EVAL-003: Application Runtime Crash / Panic (SIGSEGV Exit Code 139)) ---
+2026-10-25T10:02:14.000Z stdout F [INFO] JWT Validation daemon initialized on 0.0.0.0:9000
+2026-10-25T10:03:01.120Z stdout F [INFO] Received cryptographic public key refresh callback from Vault
+2026-10-25T10:03:02.450Z stderr F [FATAL] unexpected signal during runtime execution: segmentation fault
+2026-10-25T10:03:02.451Z stderr F [signal SIGSEGV: segmentation violation code=0x1 addr=0x0 pc=0x7f88a912e3b4]
+2026-10-25T10:03:02.452Z stderr F runtime stack:
+2026-10-25T10:03:02.453Z stderr F panic: runtime error: invalid memory address or nil pointer dereference
+2026-10-25T10:03:02.454Z stderr F 	goroutine 42 [running]:
+2026-10-25T10:03:02.455Z stderr F 	github.com/company/auth/crypto.VerifySignature(0x0, 0xc00018a000, 0x20)
+2026-10-25T10:03:02.456Z stderr F 		/app/crypto/verifier.go:88 +0x3a
+2026-10-25T10:03:02.457Z stderr F 	github.com/company/auth/jwt.(*Parser).Validate(0xc0000a2000, 0xc00021e000)
+2026-10-25T10:03:02.458Z stderr F 		/app/jwt/parser.go:142 +0x18b
+2026-10-25T10:03:03.010Z stderr F kubelet: Container jwt-validator in pod auth-gateway-554488b9c-p21nm exited with status 139 (SIGSEGV)
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON      OBJECT                              MESSAGE
+1m          Normal    Pulled      pod/auth-gateway-554488b9c-p21nm    Container image "myrepo.internal/auth/jwt-validator:v3.2.0" already present on machine
+45s         Warning   Unhealthy   pod/auth-gateway-554488b9c-p21nm    Liveness probe failed: connection refused
+40s         Normal    Killing     pod/auth-gateway-554488b9c-p21nm    Container jwt-validator failed liveness probe, will be restarted
+
+--- STATUS & DESCRIBE ---
+State: Terminated (Reason: Error, Exit Code: 139), Last State: ExitCode 139

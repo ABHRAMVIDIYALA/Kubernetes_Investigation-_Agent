@@ -1,0 +1,7 @@
+2026-10-10T09:15:10.000Z stdout F [INFO] pod/catalog-api-6d8794db54-k8mx9 namespace/store Server worker threads spawned
+2026-10-10T09:15:12.300Z stdout F [INFO] container/catalog-server Handling incoming spike: 4,500 req/sec
+2026-10-10T09:15:20.120Z stderr F [WARN] Event loop lag exceeded 2,800ms
+2026-10-10T09:15:25.500Z stderr F kubelet: Readiness probe failed: Get "http://10.244.2.14:8080/ready": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+2026-10-10T09:15:30.200Z stderr F kubelet: Liveness probe failed: HTTP probe failed with statuscode: 503 Service Unavailable
+2026-10-10T09:15:35.400Z stderr F kubelet: Liveness probe failed: Get "http://10.244.2.14:8080/healthz": connection refused
+2026-10-10T09:15:36.000Z stderr F kubelet: Container catalog-server failed liveness probe, will be restarted

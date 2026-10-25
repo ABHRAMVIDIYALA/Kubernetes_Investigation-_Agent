@@ -1,0 +1,13 @@
+--- TELEMETRY LOGS (K8S-EVAL-010: Service Routes Traffic to Unhealthy / Wrong Canary Pods via Overlapping Selector) ---
+2026-10-25T12:20:00.120Z stdout F [INFO] API Gateway Canary v2.9-beta starting
+2026-10-25T12:20:05.400Z stderr F [ERROR] Missing Redis schema migration v29: table 'rate_limits_v2' does not exist
+2026-10-25T12:20:06.100Z stderr F [ERROR] Responding HTTP 500 Internal Server Error to client request /api/v1/auth
+2026-10-25T12:20:10.220Z stderr F [ERROR] Responding HTTP 500 Internal Server Error to client request /api/v1/orders
+
+--- KUBERNETES EVENTS ---
+LAST SEEN   TYPE      REASON       OBJECT                             MESSAGE
+2m          Normal    Updated      endpoints/api-gateway              Updated endpoints with 4 addresses: 10.244.1.10, 10.244.1.11, 10.244.1.12, 10.244.2.99
+1m          Warning   Unhealthy    pod/api-gateway-canary-88cf5-99zxc Readiness probe HTTP 500 on /healthz
+
+--- STATUS & DESCRIBE ---
+Endpoints: 10.244.1.10:8080, 10.244.1.11:8080, 10.244.1.12:8080, 10.244.2.99:8080 (10.244.2.99 is canary failing requests)
